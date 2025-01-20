@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internet Latency Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 1.5em;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Internet Latency Checker</h1>
+    <p>Click the button below to check your internet connection latency to this server.</p>
+    <button onclick="checkLatency()">Check Latency</button>
+    <div class="result" id="result"></div>
+
+    <script>
+        async function checkLatency() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Checking...';
+
+            try {
+                const startTime = performance.now();
+                await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+                const endTime = performance.now();
+
+                const latency = endTime - startTime;
+                resultDiv.textContent = `Latency: ${latency.toFixed(2)} ms`;
+            } catch (error) {
+                resultDiv.textContent = 'Error: Unable to check latency.';
+                console.error('Error fetching latency:', error);
+            }
+        }
+    </script>
+</body>
+</html>
