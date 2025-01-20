@@ -19,29 +19,89 @@
             font-size: 1em;
             cursor: pointer;
         }
+        #countdown {
+            margin-top: 10px;
+            font-size: 1.2em;
+            color: #555;
+        }
+        input {
+            padding: 5px;
+            font-size: 1em;
+            margin-top: 10px;
+            width: 80px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <h1>Internet Latency Checker</h1>
-    <p>Click the button below to check your internet connection latency to this server.</p>
-    <button onclick="checkLatency()">Check Latency</button>
+    <p>Set the test duration (in seconds) and click the button below to test your internet connection latency to this server.</p>
+    <input type="number" id="testDurationInput" min="1" max="300" value="60" /> seconds
+    <br>
+    <button onclick="startLatencyTest()">Start Latency Test</button>
+    <div id="countdown"></div>
     <div class="result" id="result"></div>
 
     <script>
-        async function checkLatency() {
+        async function startLatencyTest() {
             const resultDiv = document.getElementById('result');
-            resultDiv.textContent = 'Checking...';
+            const countdownDiv = document.getElementById('countdown');
+            const testDurationInput = document.getElementById('testDurationInput');
 
-            try {
-                const startTime = performance.now();
-                await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
-                const endTime = performance.now();
+            const testDuration = parseInt(testDurationInput.value) * 1000; // Convert seconds to milliseconds
+            if (isNaN(testDuration) || testDuration <= 0) {
+                resultDiv.textContent = 'Please enter a valid test duration.';
+                return;
+            }
 
-                const latency = endTime - startTime;
-                resultDiv.textContent = `Latency: ${latency.toFixed(2)} ms`;
-            } catch (error) {
-                resultDiv.textContent = 'Error: Unable to check latency.';
-                console.error('Error fetching latency:', error);
+            resultDiv.textContent = `Testing latency for ${testDuration / 1000} seconds...`;
+
+            const latencies = [];
+            const interval = 1000; // Interval between requests in milliseconds
+            let remainingTime = testDuration / 1000; // Time in seconds
+
+            const updateCountdown = setInterval(() => {
+                countdownDiv.textContent = `Time remaining: ${remainingTime} seconds`;
+                remainingTime--;
+            }, 1000);
+
+            const startTime = performance.now();
+
+            async function measureLatency() {
+                const requestStart = performance.now();
+                try {
+                    await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+                    const requestEnd = performance.now();
+                    latencies.push(requestEnd - requestStart);
+                } catch (error) {
+                    latencies.push(null); // Log null for failed requests
+                }
+            }
+
+            while (performance.now() - startTime < testDuration) {
+                await measureLatency();
+                await new Promise(resolve => setTimeout(resolve, interval));
+            }
+
+            clearInterval(updateCountdown);
+            countdownDiv.textContent = '';
+
+            const validLatencies = latencies.filter(latency => latency !== null);
+            if (validLatencies.length > 0) {
+                const average = validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length;
+                const max = Math.max(...validLatencies);
+                const min = Math.min(...validLatencies);
+
+                resultDiv.innerHTML = `
+                    <p>Latency Test Results:</p>
+                    <ul>
+                        <li>Average Latency: ${average.toFixed(2)} ms</li>
+                        <li>Maximum Latency: ${max.toFixed(2)} ms</li>
+                        <li>Minimum Latency: ${min.toFixed(2)} ms</li>
+                    </ul>
+                `;
+            } else {
+                resultDiv.textContent = 'Error: All requests failed during the test.';
             }
         }
     </script>
